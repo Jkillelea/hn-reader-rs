@@ -1,0 +1,18 @@
+[package]
+name = "hn-reader-rs"
+version = "0.1.0"
+authors = ["Jacob Killelea <jkillelea@protonmail.ch>"]
+
+[dependencies]
+tokio-core = "*"
+futures    = "*"
+url        = "*"
+
+[dependencies.hyper]
+version = "*"
+# version = "0.9"
+# features = ["ssl"]
+
+[dependencies.gtk]
+version = "*"
+features = ["v3_10"] # get ListBox in scope
