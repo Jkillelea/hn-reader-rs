@@ -1,59 +1,70 @@
 #![allow(warnings)] // Don't bother with warnings for now
+// GUI
 extern crate gtk;
 use gtk::traits::*;
 
-extern crate futures;
-use futures::Future;
-use futures::stream::Stream;
-
-extern crate hyper;
-use hyper::Client;
+extern crate reqwest;
+extern crate serde_json;
+use serde_json::Value;
+use Value::{Array, Number};
 
 extern crate url;
-use url::Url;
-
-extern crate tokio_core;
+use url::{Url, ParseError};
 
 use std::io;
+use std::io::Read;
+use std::io::BufWriter;
 use std::io::prelude::*;
 
 const NROWS:    u64  = 1000;
 const BASE_URL: &str = "https://hacker-news.firebaseio.com/";
 
-// TODO -> Get HTTPS working
 fn main() {
-    let mut core = tokio_core::reactor::Core::new().unwrap();
-    let handle   = core.handle();
-    let client   = Client::new(&handle);
+    let mut stdout = io::stdout();
+    let mut stdout = BufWriter::new(stdout.lock());
 
+    let mut response_body = String::new();
+    // let mut urls = Vec::new();
+    let url = topstories_url().unwrap().to_string();
 
-    let mut url = Url::parse(BASE_URL).unwrap();
-    let url = url.join("/v0/topstories.json?print=pretty").unwrap();
-    let url = url.to_string().parse::<hyper::Uri>().unwrap();
+    let mut client = reqwest::Client::new().unwrap();
+    let mut res    = client.get(&url).unwrap().send().unwrap();
 
-    let work = client.get(url).and_then(|res| {
-        println!("Response: {}", res.status());
-        println!("Headers: \n{}", res.headers());
+    res.read_to_string(&mut response_body);
+    // println!("{:#?}", res);
+    // println!("{:#?}", response_body);
 
-        res.body().for_each(|chunk| {
-            io::stdout().write_all(&chunk).map_err(From::from)
-        })
-    }).map(|_| {
-        println!("\n\nDone.");
-    });
+    let json: serde_json::Value = serde_json::from_str(&response_body).unwrap();
+    // println!("{:?}", json);
 
-    match core.run(work) {
-        Ok(result) => {
-            println!("OK: {:?}", result);
+    if let Array(values) = json {
+        for id in &values {
+            let id = id.as_i64().unwrap();
+            // urls.push(id_url(id).unwrap());
+
+            let url = id_url(id).unwrap();
+            let mut res = client.get(url).unwrap().send().unwrap();
+            response_body.clear();
+            res.read_to_string(&mut response_body);
+            // println!("{:?}", response_body);
+            stdout.write(response_body.as_bytes()).unwrap();
         }
-        Err(e) => {
-            println!("[[FAIL]] {:#?}", e);
-        }
-    };
+    }
 
     // gtk_stuff();
 }
 
+fn topstories_url() -> Result<Url, ParseError> {
+    let mut url = Url::parse(BASE_URL)?
+                      .join("/v0/topstories.json?print=pretty")?;
+    Ok(url)
+}
+
+fn id_url(id: i64) -> Result<Url, ParseError> {
+    let mut url = Url::parse(BASE_URL)?
+                      .join(&format!("/v0/item/{}.json?print=pretty", id))?;
+    Ok(url)
+}
 
 fn gtk_stuff() {
     // gtk::init().unwrap_or_else(|_| panic!("Failed to start GTK!"));

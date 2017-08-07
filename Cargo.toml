@@ -1,17 +1,12 @@
 [package]
-name = "hn-reader-rs"
+name    = "hn-reader-rs"
 version = "0.1.0"
 authors = ["Jacob Killelea <jkillelea@protonmail.ch>"]
 
 [dependencies]
-tokio-core = "*"
-futures    = "*"
-url        = "*"
-
-[dependencies.hyper]
-version = "*"
-# version = "0.9"
-# features = ["ssl"]
+url     = "*"
+reqwest = "*"
+serde_json = "*"
 
 [dependencies.gtk]
 version = "*"
