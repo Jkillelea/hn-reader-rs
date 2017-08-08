@@ -16,6 +16,9 @@ use std::io::Read;
 use std::io::BufWriter;
 use std::io::prelude::*;
 
+use std::thread;
+use std::sync::mpsc;
+
 const NROWS:    u64  = 1000;
 const BASE_URL: &str = "https://hacker-news.firebaseio.com/";
 
@@ -24,34 +27,53 @@ fn main() {
     let mut stdout = BufWriter::new(stdout.lock());
 
     let mut response_body = String::new();
-    // let mut urls = Vec::new();
     let url = topstories_url().unwrap().to_string();
 
     let mut client = reqwest::Client::new().unwrap();
     let mut res    = client.get(&url).unwrap().send().unwrap();
 
     res.read_to_string(&mut response_body);
-    // println!("{:#?}", res);
-    // println!("{:#?}", response_body);
-
     let json: serde_json::Value = serde_json::from_str(&response_body).unwrap();
-    // println!("{:?}", json);
 
     if let Array(values) = json {
-        for id in &values {
-            let id = id.as_i64().unwrap();
-            // urls.push(id_url(id).unwrap());
+        let mut i = 0;
+        let (tx, rx) = mpsc::channel();
+        for id in values {
+            let thread_tx = tx.clone();
+            let id        = id.as_i64().unwrap();
+            let mut body  = String::new();
 
-            let url = id_url(id).unwrap();
-            let mut res = client.get(url).unwrap().send().unwrap();
-            response_body.clear();
-            res.read_to_string(&mut response_body);
+            thread::spawn(move || {
+                let mut client = client_or_sleep();
+                let url        = id_url(id).unwrap();
+                let mut res    = client.get(url).unwrap().send().unwrap();
+                res.read_to_string(&mut body);
+
+                thread_tx.send((i, body));
+            });
+
             // println!("{:?}", response_body);
-            stdout.write(response_body.as_bytes()).unwrap();
+            // stdout.write(response_body.as_bytes()).unwrap();
+            i += 1;
+        }
+
+        for (i, body) in rx {
+            println!("{} {}", i, body);
         }
     }
 
     // gtk_stuff();
+}
+
+// Return a new Client type or sleep 1 second and try again
+fn client_or_sleep() -> reqwest::Client {
+    let mut client = match reqwest::Client::new() {
+        Ok(client) => return client,
+        Err(_) => {
+            thread::sleep(::std::time::Duration::new(1, 0));
+            return client_or_sleep();
+        }
+    };
 }
 
 fn topstories_url() -> Result<Url, ParseError> {
