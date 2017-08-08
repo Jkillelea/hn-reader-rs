@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["Jacob Killelea <jkillelea@protonmail.ch>"]
 
 [dependencies]
-url     = "*"
-reqwest = "*"
+url        = "*"
+reqwest    = "*"
 serde_json = "*"
 
 [dependencies.gtk]
