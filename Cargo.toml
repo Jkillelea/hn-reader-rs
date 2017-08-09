@@ -5,8 +5,10 @@ authors = ["Jacob Killelea <jkillelea@protonmail.ch>"]
 
 [dependencies]
 url        = "*"
-reqwest    = "*"
-serde_json = "*"
+reqwest      = "*"
+serde_json   = "*"
+serde        = "*"
+serde_derive = "*"
 
 [dependencies.gtk]
 version = "*"
